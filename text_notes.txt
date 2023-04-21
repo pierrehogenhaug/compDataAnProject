@@ -1,0 +1,36 @@
+Notes on case 2
+
+Research Ideas
+- "Can we identify distinct physiological states in individuals during different phases of the Tangram puzzle 
+   task experiment using unsupervised machine learning techniques?"
+- ...
+
+GPT Explanation copy/paste
+- In word file
+
+
+
+ID no. / Team no. / puzzler
+- Each experiment day has 2-4 teams of 2 participants. They are listed in the "team_info" csv file. A distinct version of this file exists within each experiment day folder. The structure of the file is as follows: 
+
+"	ID	Team	Puzzler
+0	ID_1	2	1
+1	ID_2	2	0
+2	ID_3	1	0
+3	ID_4	3	1
+4	ID_5	3	0
+5	ID_6	4	0
+6	ID_7	4	1
+7	ID_8	1	1
+"
+As we can see, Participants are labeled ID_1 - ID_8, teams are labeled [1-4] and Puzzler is binary [0,1] (0 for no, 1 for yes).
+
+The problem is that the "team_info" has identical naming convention in all experiment day folder.
+	- On day D11 there were 8 participants, they therefore have IDs 1-8 and teams 1-4.
+	- On day D11 there were 6 participants, they therefore have have IDs 1-6 and teams 1-3
+	- On day D131 there were 4 participants, they therefore have have IDs 1-4 and teams 1-2
+	- On day D132 there were 4 participants, they therefore have have IDs 1-4 and teams 1-2
+	- On day D133 there were 2 participants, they therefore have have IDs 1-2 and teams 1
+	- On day D134 there were 2 participants, they therefore have have IDs 1-2 and teams 1
+We thus have many identical ID numbers and Team numbers. 
+When I conduct analysis on the combined data, how can I distinguish the different ID number and team numbers. 

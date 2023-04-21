@@ -1,0 +1,23 @@
+Notes on case 2
+
+Research Ideas
+- "Can we identify distinct physiological states in individuals during different phases of the Tangram puzzle 
+   task experiment using unsupervised machine learning techniques?"
+- ...
+
+GPT Explanation copy/paste
+- In word file
+
+
+
+ID no. / Team no. / puzzler
+- Each experiment day has 2-4 teams of 2 participants. 
+	- Participants are labeled 1-8 and teams are labeled [1-4]
+	- On day D11 there were 8 participants, they therefore have IDs 1-8 and teams 1-4.
+	- On day D11 there were 6 participants, they therefore have have IDs 1-6 and teams 1-3
+	- On day D131 there were 4 participants, they therefore have have IDs 1-4 and teams 1-2
+	- On day D132 there were 4 participants, they therefore have have IDs 1-4 and teams 1-2
+	- On day D133 there were 2 participants, they therefore have have IDs 1-2 and teams 1
+	- On day D134 there were 2 participants, they therefore have have IDs 1-2 and teams 1
+We thus have many identical ID numbers and Team numbers. 
+When I conduct analysis on the combined data, how can I distinguish the different ID number and team numbers. 
