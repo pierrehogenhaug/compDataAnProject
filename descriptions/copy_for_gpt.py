@@ -8,13 +8,30 @@ import seaborn as sns
 
 pwd = os.getcwd()
 
-def load_csv_data(folder_path, file_name):
-    file_path = f"{folder_path}/{file_name}"
-    return pd.read_csv(file_path)
+def load_csv_data(phase_path, file_name):
+    file_path = os.path.join(phase_path, file_name)
+    if not os.path.exists(file_path):
+        return None
+    data = pd.read_csv(file_path)
+    return convert_time_to_datetime(data)
 
 def load_excel_data(folder_path, file_name):
     file_path = f"{folder_path}/{file_name}"
     return pd.read_excel(file_path)
+
+# convert the 'time' column to a datetime object and set it as the index
+def convert_time_to_datetime(data):
+    if 'time' not in data.columns:
+        return data
+    if data['time'].dtype == 'datetime64[ns]':
+        return data.set_index('time')
+    return data.set_index(pd.to_datetime(data['time']))
+
+# resample the data at a common frequency
+def resample_data(data, frequency='S'):
+    if data is None:
+        return None
+    return data.resample(frequency).mean().interpolate(method='linear')
 
 def combine_data(data_path):
     combined_data = []
@@ -53,12 +70,10 @@ def process_id_folder(day_path, id_folder, combined_data):
             if not os.path.isdir(phase_path):
                 continue
 
-            #print(f"Processing: {phase_path}")
-
-            bvp_data = load_csv_data(phase_path, "BVP.csv")
-            eda_data = load_csv_data(phase_path, "EDA.csv")
-            hr_data = load_csv_data(phase_path, "HR.csv")
-            temp_data = load_csv_data(phase_path, "TEMP.csv")
+            bvp_data = resample_data(load_csv_data(phase_path, "BVP.csv"))
+            eda_data = resample_data(load_csv_data(phase_path, "EDA.csv"))
+            hr_data = resample_data(load_csv_data(phase_path, "HR.csv"))
+            temp_data = resample_data(load_csv_data(phase_path, "TEMP.csv"))
             response_data = load_csv_data(phase_path, "response.csv")
 
             combined_data.append({
@@ -75,77 +90,50 @@ def process_id_folder(day_path, id_folder, combined_data):
 
 data_path = os.path.join(pwd, 'dataset')
 combined_data = combine_data(data_path)
+
 combined_dataframe = pd.DataFrame.from_records(combined_data)
 
-biosignals = ['EDA', 'HR', 'TEMP', 'BVP']
-num_biosignals = len(biosignals)
-fig, axs = plt.subplots(num_biosignals, 3, figsize=(18, 6*num_biosignals), sharey='row')
 
-for b_idx, biosignal in enumerate(biosignals):
-    for p_idx, phase in enumerate(['phase1', 'phase2', 'phase3']):
-        phase_data = combined_dataframe[combined_dataframe['phase'] == phase]
-        signal_data = [row[biosignal] for row in phase_data[biosignal.lower()]]
-        sns.histplot(signal_data, kde=True, ax=axs[b_idx, p_idx])
-        axs[b_idx, p_idx].set_title(f"{biosignal} Distribution for {phase}")
-        axs[b_idx, p_idx].set_xlabel(biosignal)
-        axs[b_idx, p_idx].set_ylabel("Frequency")
+### Data Preprocessing
+def combine_biodata(bvp, eda, hr, temp):
+    return pd.concat([bvp, eda, hr, temp], axis=1)
 
-plt.tight_layout()
-plt.show()
+combined_dataframe['combined_biodata'] = combined_dataframe.apply(lambda row: combine_biodata(row['bvp'], row['eda'], row['hr'], row['temp']), axis=1)
 
-measures = ['bvp', 'eda', 'hr', 'temp']
-mean_correlations = {}
+def extract_features(combined_biodata):
+    features = {
+        'bvp_mean': combined_biodata['BVP'].mean(),
+        'bvp_std': combined_biodata['BVP'].std(),
+        'bvp_min': combined_biodata['BVP'].min(),
+        'bvp_max': combined_biodata['BVP'].max(),
+        'bvp_median': combined_biodata['BVP'].median(),
+        'eda_mean': combined_biodata['EDA'].mean(),
+        'eda_std': combined_biodata['EDA'].std(),
+        'eda_min': combined_biodata['EDA'].min(),
+        'eda_max': combined_biodata['EDA'].max(),
+        'eda_median': combined_biodata['EDA'].median(),
+        'hr_mean': combined_biodata['HR'].mean(),
+        'hr_std': combined_biodata['HR'].std(),
+        'hr_min': combined_biodata['HR'].min(),
+        'hr_max': combined_biodata['HR'].max(),
+        'hr_median': combined_biodata['HR'].median(),
+        'temp_mean': combined_biodata['TEMP'].mean(),
+        'temp_std': combined_biodata['TEMP'].std(),
+        'temp_min': combined_biodata['TEMP'].min(),
+        'temp_max': combined_biodata['TEMP'].max(),
+        'temp_median': combined_biodata['TEMP'].median()
+    }
+    return features
 
-for phase in ['phase1', 'phase2', 'phase3']:
-    phase_data = combined_dataframe[combined_dataframe['phase'] == phase]
-    
-    for measure1 in measures:
-        for measure2 in measures:
-            if measure1 == measure2:
-                continue
-            
-            pair_key = f"{measure1}-{measure2}"
-            if pair_key in mean_correlations:
-                continue
-            
-            reverse_pair_key = f"{measure2}-{measure1}"
-            correlations = []
-            
-            for index, row in phase_data.iterrows():
-                data1 = row[measure1][measure1.upper()]
-                data2 = row[measure2][measure2.upper()]
+combined_dataframe['features'] = combined_dataframe['combined_biodata'].apply(extract_features)
 
-                # Resample the data1 to match the data2 length
-                data1_resampled = np.interp(np.linspace(0, len(data1), len(data2)), np.arange(len(data1)), data1)
+features_dataframe = combined_dataframe[['day', 'id', 'round', 'phase', 'features']].copy()
+features_dataframe = pd.concat([features_dataframe.drop(['features'], axis=1), features_dataframe['features'].apply(pd.Series)], axis=1)
 
-                # Calculate the correlation coefficient
-                corr = np.corrcoef(data1_resampled, data2)[0, 1]
-                correlations.append(corr)
-                
-            mean_correlations[pair_key] = np.mean(correlations)
-            print(f"Mean correlation between {measure1.upper()} and {measure2.upper()} for {phase}: {mean_correlations[pair_key]}")
+scaler = StandardScaler()
+numeric_columns = ['bvp_mean', 'bvp_std', 'bvp_min', 'bvp_max', 'bvp_median',
+                   'eda_mean', 'eda_std', 'eda_min', 'eda_max', 'eda_median',
+                   'hr_mean', 'hr_std', 'hr_min', 'hr_max', 'hr_median',
+                   'temp_mean', 'temp_std', 'temp_min', 'temp_max', 'temp_median']
 
-            biosignals = ['EDA', 'HR', 'TEMP', 'BVP']
-phases = ['phase1', 'phase2', 'phase3']
-summary_stats = []
-
-for biosignal in biosignals:
-    for phase in phases:
-        phase_data = combined_dataframe[combined_dataframe['phase'] == phase]
-        signal_data = [row[biosignal] for row in phase_data[biosignal.lower()]]
-        combined_signal_data = pd.concat(signal_data)
-        
-        mean = combined_signal_data.mean()
-        median = combined_signal_data.median()
-        std_dev = combined_signal_data.std()
-        
-        summary_stats.append({
-            'biosignal': biosignal,
-            'phase': phase,
-            'mean': mean,
-            'median': median,
-            'std_dev': std_dev
-        })
-
-summary_stats_df = pd.DataFrame(summary_stats)
-print(summary_stats_df)
+features_dataframe[numeric_columns] = scaler.fit_transform(features_dataframe[numeric_columns])
